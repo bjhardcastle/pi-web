@@ -47,6 +47,7 @@ import { SubagentQueue } from "./subagent-queue";
 import { addWorktree, removeWorktree } from "./worktree";
 import { randomUUID } from "node:crypto";
 import { existsSync, writeFileSync } from "node:fs";
+import { getNewSessionDir } from "./session-dir";
 
 interface HostSession {
   readonly inner: AgentSessionLike;
@@ -569,8 +570,8 @@ export function createSubagentController(
       mcpScope.allExtensionTools = allExtensionTools;
 
       const sessionManager = isolatedWorktree
-        ? SessionManager.create(childCwd, undefined, { parentSession: parent.sessionFile })
-        : SessionManager.create(parent.cwd, undefined, { parentSession: parent.sessionFile });
+        ? SessionManager.create(childCwd, getNewSessionDir(), { parentSession: parent.sessionFile })
+        : SessionManager.create(parent.cwd, getNewSessionDir(), { parentSession: parent.sessionFile });
       const createdAt = new Date().toISOString();
       const metadata: SubagentMetadata = {
         version: 1,

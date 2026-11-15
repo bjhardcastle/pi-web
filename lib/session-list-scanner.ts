@@ -18,6 +18,7 @@ import type { Dirent } from "node:fs";
 import { basename, join } from "node:path";
 import { getAgentDir } from "@earendil-works/pi-coding-agent";
 import { writePrivateFileAtomicSync } from "./atomic-file";
+import { getSessionsRoot } from "./session-dir";
 
 export interface ScannedSessionInfo {
 	path: string;
@@ -473,16 +474,20 @@ export async function scanSessionFileInfo(
 
 async function enumerateSessionFiles(sessionsDir: string): Promise<string[]> {
 	let dirs: Dirent[];
+	const files: string[] = [];
 	try {
 		const entries = await readdir(sessionsDir, { withFileTypes: true });
 		dirs = entries.filter(
 			(entry) => entry.isDirectory() || entry.isSymbolicLink(),
 		);
+		// A flat session dir (PI_CODING_AGENT_SESSION_DIR) keeps files at the root.
+		for (const entry of entries) {
+			if (entry.isFile() && entry.name.endsWith(".jsonl")) files.push(join(sessionsDir, entry.name));
+		}
 	} catch {
 		return [];
 	}
 
-	const files: string[] = [];
 	for (const dir of dirs) {
 		const dirPath = join(sessionsDir, dir.name);
 		try {
@@ -636,8 +641,7 @@ export async function listSessionsIncremental(
 	loadPersistedIndex();
 	const deferDetails = options.deferDetails ?? false;
 
-	const agentDir = getAgentDir();
-	const sessionsDir = join(agentDir, "sessions");
+	const sessionsDir = getSessionsRoot();
 	const files = await enumerateSessionFiles(sessionsDir);
 	globalThis.__piSessionMembership = { files: new Set(files) };
 
@@ -708,7 +712,7 @@ export async function listSessionsIncremental(
 		}
 	});
 
-	if (changed.length > 0 || stale.length > 0) queueIndexPersist(indexFilePath(agentDir));
+	if (changed.length > 0 || stale.length > 0) queueIndexPersist(indexFilePath());
 
 	// Preserve catalogue order for timestamp ties, independently of cache hits
 	// and the order in which concurrent file reads complete. Since pi 0.86 the

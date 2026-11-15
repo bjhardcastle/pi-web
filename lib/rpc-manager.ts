@@ -63,6 +63,7 @@ import { createSubagentController, getLiveSubagentStatus, hasUnsettledSubagentRu
 import { isBuiltInSubagentsEnabled } from "./subagent-settings";
 import { resolveShellTools } from "./powershell-settings";
 import { CHAT_ONLY_RESOURCE_LOADER_OPTIONS, contextFilesSystemPrompt } from "./chat-only";
+import { getNewSessionDir, getSystemPromptOverride } from "./session-dir";
 import { createExactSystemPromptExtension } from "./exact-system-prompt";
 import { createPiWebBuiltinExtensions, createSubagentCodemodeExtension, createSubagentMcpExtensions } from "./builtin-extensions";
 import type { McpHost } from "./mcp-host";
@@ -3476,7 +3477,7 @@ export async function startRpcSession(
     sessionManager = SessionManager.open(sessionFile, undefined);
   } else {
     if (!cwd) throw new Error("cwd is required for a new session");
-    sessionManager = SessionManager.create(cwd, undefined);
+    sessionManager = SessionManager.create(cwd, getNewSessionDir());
   }
   const sessionCwd = sessionManager.getCwd();
   const sessionEntries = sessionManager.getEntries() as unknown as SessionEntry[];
@@ -3611,6 +3612,8 @@ export async function startRpcSession(
         : chatOnly
           ? { ...CHAT_ONLY_RESOURCE_LOADER_OPTIONS, extensionFactories: [exactSystemPromptExtension] }
         : {
+            // PI_WEB_SYSTEM_PROMPT, as pi's `--system-prompt` (file path or text).
+            ...(getSystemPromptOverride() ? { systemPrompt: getSystemPromptOverride() } : {}),
             extensionFactories: [
               llamaCppExtension,
               ...(builtins?.extensions ?? []),

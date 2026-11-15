@@ -17,6 +17,7 @@ import { resolveProject, type ProjectInfo } from "./worktree";
 import { readSubagentRun, SUBAGENT_META_TYPE } from "./subagents";
 import { readSideRelation } from "./side-session";
 import { checkSessionMembership, listSessionsIncremental, scanSessionFileInfo, type ScannedSessionInfo } from "./session-list-scanner";
+import { getSessionsRoot } from "./session-dir";
 
 export { getAgentDir };
 
@@ -366,7 +367,7 @@ const SESSION_LIST_CACHE_TTL_MS = 30_000;
 const SESSION_ID_PATTERN = /^[A-Za-z0-9](?:[A-Za-z0-9._-]*[A-Za-z0-9])?$/;
 
 function defaultSessionsDir(): string {
-  return join(getAgentDir(), "sessions");
+  return getSessionsRoot();
 }
 
 function resolvePathWithinDefaultSessions(
@@ -398,17 +399,24 @@ async function findSessionPathById(sessionId: string): Promise<string | null> {
 
   const suffix = `_${sessionId}.jsonl`;
   let match: string | undefined;
+  // A flat session dir (PI_CODING_AGENT_SESSION_DIR) keeps files at the root.
+  const scanDirs: Array<{ path: string; files?: string[] }> = [{
+    path: sessionsDir,
+    files: projectDirs.filter((entry) => entry.isFile()).map((entry) => entry.name),
+  }];
   for (const projectDir of projectDirs) {
     if (!projectDir.isDirectory() && !projectDir.isSymbolicLink()) continue;
     const projectPath = resolvePathWithinDefaultSessions(
       join(sessionsDir, projectDir.name),
       sessionsDir,
     );
-    if (!projectPath) continue;
-
+    if (projectPath) scanDirs.push({ path: projectPath });
+  }
+  for (const scanDir of scanDirs) {
+    const projectPath = scanDir.path;
     let files: string[];
     try {
-      files = await readdir(projectPath);
+      files = scanDir.files ?? await readdir(projectPath);
     } catch {
       continue;
     }
