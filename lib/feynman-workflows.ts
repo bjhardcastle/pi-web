@@ -1,15 +1,16 @@
-/** Feynman's slash workflows, offered as a selector in the composer. */
+/** Feynman's slash workflows (its `prompts/*.md`), offered as a selector in the composer. */
 export const FEYNMAN_WORKFLOWS = [
-  { name: "deepresearch", description: "Multi-agent deep research report" },
+  { name: "deepresearch", description: "Source-heavy investigation with citations" },
   { name: "lit", description: "Literature review" },
-  { name: "review", description: "Simulated peer review" },
-  { name: "audit", description: "Paper vs. codebase claims audit" },
-  { name: "replicate", description: "Replicate an experiment" },
-  { name: "compare", description: "Compare sources" },
-  { name: "draft", description: "Draft a paper-style writeup" },
-  { name: "autoresearch", description: "Autonomous experiment loop" },
-  { name: "watch", description: "Recurring research watch" },
-  { name: "summarize", description: "Summarize a paper or source" },
+  { name: "review", description: "Critique with severity and revision plan" },
+  { name: "audit", description: "Paper claims vs. public code" },
+  { name: "replicate", description: "Replication plan" },
+  { name: "recipe", description: "Ranked ML training recipes" },
+  { name: "compare", description: "Source comparison matrix" },
+  { name: "draft", description: "Paper-style draft from findings" },
+  { name: "autoresearch", description: "Bounded experiment loop" },
+  { name: "summarize", description: "Summarize a paper, repo or PDF" },
+  { name: "log", description: "Durable session log" },
 ] as const;
 
 /** The draft a workflow pick produces: its slash command, keeping any text already typed after a leading command. */
