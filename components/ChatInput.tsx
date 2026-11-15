@@ -35,6 +35,7 @@ import { useChatAppearance } from "@/hooks/useChatAppearance";
 import { useFontPreferences } from "@/hooks/useFontPreferences";
 import type { ToolPreset } from "@/lib/tool-presets";
 import { SelectorRow } from "./SelectorRow";
+import { FEYNMAN_WORKFLOWS, workflowDraft } from "../lib/feynman-workflows";
 import { ModelSelector, type ModelSelectorOption } from "./ModelSelector";
 
 export { filterModelOptions } from "./ModelSelector";
@@ -745,6 +746,7 @@ export const ChatInput = memo(forwardRef<ChatInputHandle, Props>(function ChatIn
   const enterSendMode = useEnterSendMode();
   const [value, setValue] = useState(() => (draftKey ? getDraft(draftKey)?.value ?? "" : ""));
   const [toolDropdownOpen, setToolDropdownOpen] = useState(false);
+  const [workflowDropdownOpen, setWorkflowDropdownOpen] = useState(false);
   const [thinkingDropdownOpen, setThinkingDropdownOpen] = useState(false);
   const [controlsMenuOpen, setControlsMenuOpen] = useState(false);
   const [attachedImages, setAttachedImages] = useState<AttachedImage[]>(() => (
@@ -779,6 +781,7 @@ export const ChatInput = memo(forwardRef<ChatInputHandle, Props>(function ChatIn
 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const toolDropdownRef = useRef<HTMLDivElement>(null);
+  const workflowDropdownRef = useRef<HTMLDivElement>(null);
   const thinkingDropdownRef = useRef<HTMLDivElement>(null);
   const controlsMenuRef = useRef<HTMLDivElement>(null);
   const historyMenuRef = useRef<HTMLDivElement>(null);
@@ -1404,6 +1407,19 @@ export const ChatInput = memo(forwardRef<ChatInputHandle, Props>(function ChatIn
     });
   }, []);
 
+  const applyWorkflow = useCallback((name: string) => {
+    const nextValue = workflowDraft(name, value);
+    setValue(nextValue);
+    setWorkflowDropdownOpen(false);
+    requestAnimationFrame(() => {
+      const ta = textareaRef.current;
+      if (!ta) return;
+      ta.focus();
+      ta.setSelectionRange(nextValue.length, nextValue.length);
+      autoGrowTextarea(ta);
+    });
+  }, [value]);
+
   const applySlashCommand = useCallback((command: SlashCommandPaletteItem) => {
     const nextValue = `/${command.name} `;
     setValue(nextValue);
@@ -1831,6 +1847,9 @@ export const ChatInput = memo(forwardRef<ChatInputHandle, Props>(function ChatIn
     const handler = (e: MouseEvent) => {
       if (toolDropdownRef.current && !toolDropdownRef.current.contains(e.target as Node)) {
         setToolDropdownOpen(false);
+      }
+      if (workflowDropdownRef.current && !workflowDropdownRef.current.contains(e.target as Node)) {
+        setWorkflowDropdownOpen(false);
       }
       if (thinkingDropdownRef.current && !thinkingDropdownRef.current.contains(e.target as Node)) {
         setThinkingDropdownOpen(false);
@@ -2826,6 +2845,61 @@ export const ChatInput = memo(forwardRef<ChatInputHandle, Props>(function ChatIn
                 )}
               </div>
             )}
+            {!isStreaming && !compact && (
+              <div ref={workflowDropdownRef} style={{ position: isMobile ? "static" : "relative" }}>
+                <button
+                  onClick={(e) => { if (!isStrayClick(e)) setWorkflowDropdownOpen((v) => !v); }}
+                  title={t("chat.workflow")}
+                  aria-label={t("chat.workflow")}
+                  aria-expanded={workflowDropdownOpen}
+                  style={{
+                    display: "flex", alignItems: "center", justifyContent: "center", gap: 5,
+                    padding: isMobile ? "0 10px" : "8px 12px",
+                    width: isMobile ? "auto" : undefined,
+                    height: controlSize,
+                    background: workflowDropdownOpen ? "var(--bg-hover)" : "none",
+                    border: "none", borderRadius: 9,
+                    color: "var(--text-muted)", cursor: "pointer", fontSize: 12,
+                    transition: "background 0.12s, color 0.12s",
+                  }}
+                  onMouseEnter={(e) => { e.currentTarget.style.background = "var(--bg-hover)"; e.currentTarget.style.color = "var(--text)"; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.background = workflowDropdownOpen ? "var(--bg-hover)" : "none"; e.currentTarget.style.color = "var(--text-muted)"; }}
+                >
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <circle cx="6" cy="6" r="3" /><circle cx="18" cy="18" r="3" /><path d="M9 6h4a3 3 0 0 1 3 3v6" />
+                  </svg>
+                  {(!isMobile || controlsMenuOpen) && <span style={{ whiteSpace: "nowrap" }}>{t("chat.workflow")}</span>}
+                </button>
+                {workflowDropdownOpen && (
+                  <div style={{
+                    position: "absolute", bottom: "calc(100% + 6px)", right: 0,
+                    maxWidth: isMobile ? "calc(100vw - 16px)" : undefined,
+                    zIndex: 100, background: "var(--bg)", border: "1px solid var(--border)",
+                    borderRadius: 8, boxShadow: "0 -4px 16px rgba(0,0,0,0.10)",
+                    overflow: "hidden", minWidth: 120,
+                  }}>
+                    {FEYNMAN_WORKFLOWS.map((wf) => (
+                      <button
+                        key={wf.name}
+                        onClick={() => applyWorkflow(wf.name)}
+                        style={{
+                          display: "flex", alignItems: "center", gap: 8,
+                          width: "100%", padding: "7px 12px",
+                          background: "none", border: "none",
+                          color: "var(--text-muted)", cursor: "pointer",
+                          fontSize: 12, textAlign: "left", whiteSpace: "nowrap",
+                        }}
+                        onMouseEnter={(e) => { e.currentTarget.style.background = "var(--bg-hover)"; }}
+                        onMouseLeave={(e) => { e.currentTarget.style.background = "none"; }}
+                      >
+                        <span style={{ flex: 1 }}>/{wf.name}</span>
+                        <span style={{ fontSize: 11, color: "var(--text-dim)", marginLeft: 8 }}>{wf.description}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
             {!isStreaming && onToolPresetChange && (
               <div ref={toolDropdownRef} style={{
                 // On a phone the menu opens from the strip's right edge, not
@@ -3035,6 +3109,7 @@ export const ChatInput = memo(forwardRef<ChatInputHandle, Props>(function ChatIn
                 aria-expanded={true}
                 onClick={() => {
                   setToolDropdownOpen(false);
+                  setWorkflowDropdownOpen(false);
                   setThinkingDropdownOpen(false);
                   setControlsMenuOpen(false);
                 }}
